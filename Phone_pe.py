@@ -9,6 +9,7 @@ import streamlit as st
 from PIL import Image
 import plotly.express as px
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 #Data_Extraction
 #Data_Extraction_From_Github_file
@@ -495,9 +496,12 @@ with tab1:
         st.subheader("PhonePe is a multinational financial services and digital payments company based in Bengaluru, Karnataka, India. Sameer Nigam, Rahul Chari, and Burzin Engineer started PhonePe in December 2015. In August 2016, the PhonePe application went live, utilizing the Unified Payments Interface (UPI).There are eleven Indian languages available for the PhonePe app. Users can send and receive money, top up data cards, recharge DTH and mobile services, pay for utilities, make in-store purchases, and carry out a variety of financial operations with it.")
         st.markdown("[DOWNLOAD PHONEPE APP](https://www.phonepe.com/app-download/)")
 with tab2:
-    with st.sidebar:
+    col1,col2,col3=st.columns(3)
+    with col1:
         selected_Year = st.selectbox("Select Year", ["2018", "2019", "2020", "2021", "2022","2023"])
+    with col2:
         selected_Quater = st.selectbox("Select Quater", ["1", "2", "3", "4"])
+    with col3:
         selected_Type = st.selectbox("Select Type", [ "map_transaction", "map_user"])
     # Specify the correct column name for coloring based on the selected type
     color_column = "Total_amount" if selected_Type == "map_transaction" else "RegisteredUsers"
@@ -512,7 +516,7 @@ with tab2:
         featureidkey='properties.ST_NM',
         locations='State',
         color=color_column,
-        range_color= (0,13000000),
+        range_color= (0,1000000000),
         color_continuous_scale='viridis'
     )
 
@@ -576,7 +580,7 @@ with tab3:
             elif select_Type == "top_district_transaction":
                 query = f"SELECT District, Transaction_Count_Pin FROM top_district_transaction where year={select_Year}  AND quater = {select_Quater} "
                 df = pd.read_sql_query(query, engine)
-                fig = px.bar(df, x='District', y="Transaction_Count_Pin", title="Bar Plot")
+                fig = px.bar(df, x='District', y="Transaction_Count_Pin", title="Bar Plot",color_discrete_sequence=px.colors.sequential.Greens_r)
                 # Set the x-axis range
                 #fig.update_xaxes(range=[0, 50]) 
                 st.plotly_chart(fig)
@@ -605,7 +609,7 @@ with tab3:
                 Transaction_type = df['Transaction_type'].tolist()
                 Count = df['Count'].tolist()
                 # Construct the Pie chart using the retrieved data
-                fig = go.Figure(data=[go.Pie(labels=Transaction_type, values=Count)])
+                fig = go.Figure(data=[go.Pie(labels=Transaction_type, values=Count,color_discrete_sequence=px.colors.sequential.dense_r)])
                 # Display the chart using Streamlit
                 st.plotly_chart(fig)
             elif select_Type == "aggregated_user":
@@ -654,13 +658,71 @@ with tab3:
             Bar_Plot(select_Year, select_Quater, select_Type)
         elif select_graph =="Pie":
             Pie_plot(select_Year, select_Quater, select_Type)
+with tab4:
+    col1,col2=st.columns(2)
+    with col1:
+        Questions=st.selectbox("Select your Question",(
+                                           "1.Top 10 brands based on user during the year 2021",
+                                           "2.States With Highest Trasaction Amount For year 2022",
+                                           "3.Least 10 Districts based on states and amount of transaction",
+                                           "4.'States With Lowest Trasaction Amount in the recent year'",
+                                           "5. Top 10 States With AppOpens in the year 2018"))
+        if Questions=="1.Top 10 brands based on user during the year 2021":
+            query1='''SELECT Brand, COUNT(*) as Count FROM aggregated_user GROUP BY Brand ORDER BY Count DESC LIMIT 10'''
+            df1 = pd.read_sql_query(query1, engine)
+            fig = px.bar(df1, x='Count', y="Brand", title="Bar Plot")
+            fig.update_xaxes(range=[0, 800]) 
+            st.plotly_chart(fig)
+        elif Questions=="2.States With Highest Trasaction Amount For year 2022":
+            query2='''SELECT State, SUM(Transaction_amount) AS Total_Transaction_Amount FROM aggregated_transaction WHERE Year=2022 GROUP BY State
+                     ORDER BY Total_Transaction_Amount DESC LIMIT 10'''
+            df = pd.read_sql_query(query2, engine)
+            fig = px.bar(df, x='State', y='Total_Transaction_Amount', title='Top 10 States by Transaction Amount')
+            # Display the plot
+            st.plotly_chart(fig)
+        elif Questions=="3.Least 10 Districts based on states and amount of transaction":
+            query = """SELECT State, District, SUM(Transaction_amount_Pin) AS Total_Transaction_Amount FROM top_district_transaction
+           GROUP BY State, District ORDER BY Total_Transaction_Amount ASC 
+           LIMIT 10"""
+            df = pd.read_sql_query(query, engine)
+             # Extract data from DataFrame
+            Districts = df['District']
+            Total_Transaction_Amount = df['Total_Transaction_Amount']
+            # Create a pie chart using Plotly Express
+            fig = go.Figure(data=[go.Pie(labels=Districts, values=Total_Transaction_Amount, title='Least 10 Districts by Transaction Amount')])
+            # Show the pie chart
+            st.plotly_chart(fig)
 
-      
-         
-    
- 
-        
+    with col2:
+         Questions=st.selectbox("Select your Question",("1.States With Lowest Trasaction Amount in the recent year",
+                                           "2. Top 10 States With AppOpens in the year 2018"))
+         if Questions=="1.States With Lowest Trasaction Amount in the recent year":
+            query1='''SELECT State, SUM(Transaction_amount_Pin) AS Total_Transaction_Amount FROM top_district_transaction
+                      WHERE YEAR = 2023 GROUP BY State ORDER BY Total_Transaction_Amount ASC;
+'''
+            df1 = pd.read_sql_query(query1, engine)
+            fig = px.bar(df1, x='State', y="Total_Transaction_Amount", title="Bar Plot")
+            #fig.update_xaxes(range=[0, 800]
+            st.plotly_chart(fig)
+         elif Questions=="2. Top 10 States With AppOpens in the year 2018":
+            query = """SELECT State, COUNT(*) AS AppOpens FROM map_user WHERE YEAR= 2018 GROUP BY State
+                      ORDER BY AppOpens DESC LIMIT 10"""
 
-
-
+            # Assuming you're using pandas to read data from SQL
+            df = pd.read_sql_query(query, engine)
+            # Plotting the scatter plot
+            plt.figure(figsize=(10, 6))
+            plt.scatter(df['State'], df['AppOpens'], color='blue')
+            plt.title('Top 10 States with App Opens in 2018')
+            plt.xlabel('State')
+            plt.ylabel('App Opens')
+            plt.xticks(rotation=45)
+            plt.grid(True)
+            plt.tight_layout()
+            st.pyplot(plt)
+       
+       
+       
+st.markdown("['INSPIRED_FROM'](https://www.phonepe.com/pulse/explore/transaction/2022/4/)")
+st.markdown("[GITHUB_LINK:]('https://github.com/VaishuSri/Phone_Pe_Pulse_Visualization_and_Exploration.git')")
 
